@@ -1,8 +1,4 @@
-// The real client. Every function here talks to YOUR Express API.
-//
-// This is the file that matters for your finals project. mockApi.js exists so
-// you can build the interface before this has anywhere to point.
-
+// Contract for the next milestone. Express expense routes are not implemented yet.
 const BASE = import.meta.env.VITE_API_BASE_URL || ''
 
 async function request(path, options) {
@@ -10,31 +6,21 @@ async function request(path, options) {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   })
-
   if (!response.ok) {
-    // Try to use the API's own message; fall back to the status line.
     let message = `${response.status} ${response.statusText}`
     try {
       const body = await response.json()
       if (body?.error) message = body.error
-    } catch {
-      // The body was not JSON. The status line is all we have.
-    }
+    } catch { /* Keep the HTTP status if the response is not JSON. */ }
     throw new Error(message)
   }
-
   return response.status === 204 ? null : response.json()
 }
 
-export const listSightings = () => request('/api/sightings')
+export const listExpenses = () => request('/api/expenses')
+export const createExpense = (input) => request('/api/expenses', { method: 'POST', body: JSON.stringify(input) })
+export const deleteExpense = (id) => request(`/api/expenses/${encodeURIComponent(id)}`, { method: 'DELETE' })
 
-export const getSighting = (id) => request(`/api/sightings/${id}`)
-
-export const createSighting = (input) =>
-  request('/api/sightings', { method: 'POST', body: JSON.stringify(input) })
-
-export const updateSighting = (id, input) =>
-  request(`/api/sightings/${id}`, { method: 'PUT', body: JSON.stringify(input) })
-
-export const deleteSighting = (id) =>
-  request(`/api/sightings/${id}`, { method: 'DELETE' })
+// Matching contract only; these routes will be implemented with the backend.
+export const listBudgets = () => request('/api/budgets')
+export const saveBudget = (input) => request(`/api/budgets/${encodeURIComponent(input.month)}/${encodeURIComponent(input.category)}`, { method: 'PUT', body: JSON.stringify(input) })

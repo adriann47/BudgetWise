@@ -1,3 +1,21 @@
+# AI usage — BudgetWise
+
+## September 24, 2026 — Week 1 foundation
+- **Tool:** OpenAI Codex.
+- **Request:** Inspect the instructor starter, then establish the basics for the Week 1 report and documentation deadline.
+- **Assistance:** Repository inspection; React dashboard and expense form; responsive CSS; mock expense persistence and validation; matching HTTP adapter; documentation and screenshot preparation.
+- **What was retained:** The React/Vite client, shared mock/HTTP interface, demo-mode environment switch, visible demo notice and original Express/PostgreSQL starter.
+- **Verification:** Production build; browser checks for creation, persistence after reload, deletion, monthly totals, empty states, invalid amounts and corrupted-storage recovery; layouts at 390px and 320px; desktop and mobile screenshots.
+- **Limitations:** No deployed-site, physical-phone or real PostgreSQL verification. Budget and category management remain unimplemented.
+- **Student review:** Pending. The student should explain the implementation in their own words, record their own contributions and update this record after review.
+- **Commit:** Pending; this increment has not been committed or pushed by Codex. Add the actual commit link after committing.
+
+## Correction identified during inspection
+Earlier conversation guidance named `realApi.js` and `App.css`; the actual starter uses `httpApi.js` and `styles.css`. Implementation and documentation now use the repository's real paths.
+
+---
+
+The instructor's original record template follows, for continued use throughout the project. Its unfilled sections are not claims of completed work.
 # AI usage
 
 This project was built with AI assistance. This file is the record of it. It is
