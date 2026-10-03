@@ -1,154 +1,146 @@
 # BudgetWise
 
-## 1. Overview
-BudgetWise is a mobile-first expense-tracking web app for students who want a clearer view of everyday spending. The Week 1 version records expenses in Philippine pesos and shows monthly totals and spending by category.
+## Overview
+BudgetWise is a mobile-first expense and budgeting app for students. It tracks expenses in Philippine pesos, groups spending by category and supports optional monthly category budgets.
 
-**Current status:** browser-only demo. The React interface uses a mock API and localStorage. The included Express/PostgreSQL server still handles the instructor's sightings example; BudgetWise backend integration is not finished.
+Week 2 adds Login, Register and Logout, PostgreSQL-backed sessions, and private expense/budget records for each account. The browser-only Week 1 demo remains available through the original mock API switch.
 
-## 2. Setup and installation
-### Requirements
-- Node.js 22 LTS with npm (the server requires Node.js 20 or newer).
-- Git and a modern browser.
-- Optional for the server starter: PostgreSQL 17, or Docker Desktop to run it.
+## Setup and installation
+Requirements: Git, Node.js 22 or newer with npm, and PostgreSQL 17 or newer for real accounts. The database is not needed in demo mode.
 
-### Get the code and install the client
 ```powershell
 git clone https://github.com/adriann47/BudgetWise.git
 cd BudgetWise
-cd client
-npm install
+cd server
+npm.cmd install
 Copy-Item .env.example .env
 ```
-Keep `VITE_USE_MOCK_API=true` for Week 1. If npm reports a blocked esbuild installation script, review the package named in the warning before approving it; the repository currently records approval for esbuild 0.25.12.
 
-### Environment variables
-Never commit actual `.env` files or credentials. All `VITE_` values are public in the client build.
+Create a PostgreSQL database named `budgetwise`, owned by a dedicated login role. Configure `DATABASE_URL` and a random `SESSION_SECRET` in the private `server/.env`. Example URL: `postgresql://budgetwise:YOUR_PASSWORD@127.0.0.1:5432/budgetwise`.
+
+Generate your own secret and put its output into `SESSION_SECRET`:
+
+```powershell
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+npm.cmd run db:migrate
+```
+
+Migrations create the tables without deleting accounts or financial records. Register through the app to create an account; no real-account seed is provided. The old sightings SQL files are historical starter material and are not the current setup path.
+
+Then install the client:
+
+```powershell
+cd ../client
+npm.cmd install
+Copy-Item .env.example .env
+```
+
+For real accounts, set:
+
+```text
+VITE_USE_MOCK_API=false
+VITE_API_BASE_URL=
+```
+
+For the standalone browser demo, use `VITE_USE_MOCK_API=true`. Demo mode does not create real accounts or connect to PostgreSQL.
+
+**On the development computer used for this project**, a project-local PostgreSQL installation is already configured under `.local/`. See [Week 2 setup](docs/week-2-auth.md) for its start/stop commands. This private directory is not committed and does not travel with a Git clone.
+
+## Configuration
 
 | Variable | Location | Example / purpose |
 | --- | --- | --- |
-| `VITE_USE_MOCK_API` | `client/.env` | `true`; only the exact value `false` enables HTTP requests. Keep true until expense endpoints exist. |
-| `VITE_API_BASE_URL` | `client/.env` | `http://localhost:3000`; API origin, without trailing slash. Ignored in mock mode. |
-| `VITE_BASE_PATH` | build environment | `/BudgetWise/` for GitHub Pages; `/` locally. The Pages workflow supplies it automatically. |
-| `DATABASE_URL` | `server/.env` | `postgresql://postgres:YOUR_LOCAL_PASSWORD@localhost:5432/haunted` for the unchanged server starter. |
-| `CORS_ORIGINS` | `server/.env` | `http://localhost:5173`; comma-separated allowed browser origins. |
-| `NODE_ENV` | `server/.env` | `development` locally; `production` when deployed. |
-| `PORT` | API hosting environment | Provided by the host; defaults to `3000` locally. |
-| `POSTGRES_PASSWORD` | root `.env`, optional Compose only | A local password you choose; never commit it. Root `.env` also supplies `CORS_ORIGINS` to Compose. |
+| `DATABASE_URL` | server `.env` | PostgreSQL connection string with dedicated application credentials. |
+| `SESSION_SECRET` | server `.env` | At least 32 random characters; private and stable between restarts. |
+| `CORS_ORIGINS` | server `.env` | `http://localhost:5173,http://127.0.0.1:5173` locally. |
+| `NODE_ENV` | server `.env` | `development` locally, `production` when deployed. |
+| `COOKIE_SAME_SITE` | server `.env` | `lax` by default; cross-site HTTPS configuration is described in the setup guide. |
+| `PORT` | server host | Defaults to `3000`; normally supplied by the hosting service. |
+| `TRUST_PROXY_HOPS` | server host, optional | Set only to match a known reverse proxy. |
+| `DATABASE_SSL` | server `.env`, optional | `true` to require verified TLS for a locally named database host. Remote hosts use verified TLS automatically. |
+| `DATABASE_CA_FILE` | server `.env`, optional | Path to the provider's CA certificate. |
+| `VITE_USE_MOCK_API` | client `.env` | Only `false` enables the real API. |
+| `VITE_API_BASE_URL` | client `.env` | Empty for the local proxy; HTTPS API origin when deployed separately. |
+| `VITE_BASE_PATH` | client build environment | `/BudgetWise/` on project Pages; supplied by the existing workflow. |
 
-### Optional: set up the existing server database
-This is **not required for the Week 1 app**. These commands run the original sightings backend, not an expense backend. From the repository root, with Docker Desktop running:
+Never commit `.env`, session secrets or database credentials. All `VITE_` values are public. Restart Vite after changing local configuration; rebuild when changing deployment variables.
 
-```powershell
-docker run --name budgetwise-pg -e POSTGRES_PASSWORD=YOUR_LOCAL_PASSWORD -e POSTGRES_DB=haunted -p 5432:5432 -d postgres:17
-cd server
-npm install
-Copy-Item .env.example .env
-```
-Edit `server/.env` so `DATABASE_URL` uses the same password. Wait for PostgreSQL to be ready, then run:
+## How to run
+Start PostgreSQL first. Then in `server/`:
 
 ```powershell
-npm run db:reset
+npm.cmd run dev
 ```
-This creates the sightings table and inserts fictional examples. **The seed step deletes existing sightings data. Use a disposable development database.** Expense tables and migrations are planned for a later milestone.
 
-## 3. How to run it
-### Week 1 demo
-From `client/`:
+In another terminal, in `client/`:
+
 ```powershell
-npm run dev
-```
-Open `http://localhost:5173` (or the address Vite prints if that port is busy). Expect the BudgetWise dashboard, a visible demo notice, a month selector, an expense list and an Add expense form. Three fictional expenses are seeded in September 2026; select that month to see them if opening the app later.
-
-For a phone on the same Wi-Fi:
-```powershell
-npm run dev -- --host
-```
-Open Vite's printed Network URL on your phone and allow the development server on your private network if Windows asks. Physical-phone testing remains to be completed.
-
-To build and preview the client:
-```powershell
-npm run build
-npm run preview
-```
-Open the preview URL printed by Vite, normally `http://localhost:4173`. The build also creates `dist/404.html` for GitHub Pages.
-
-### Optional server starter
-In a separate terminal, from `server/` after database setup:
-```powershell
-npm run dev
-```
-`http://localhost:3000/healthz` should return `{"ok":true}`. `/readyz` should return `{"ok":true,"db":"up"}` when PostgreSQL is reachable. Leave the client in mock mode: this server does not yet implement expenses.
-
-### Deployment
-The existing `.github/workflows/deploy-pages.yml` publishes the client on pushes to `main` when GitHub Pages is configured to use GitHub Actions and the repository meets the workflow's public-repository condition. Keep demo mode enabled for this milestone. This increment has not yet been verified on a live deployment; a successful local build is not a deployment check.
-
-## 4. Features and usage
-1. Select a month to see its total spending, expense count and top category.
-2. Enter a description, positive PHP amount (up to two decimal places), category and date.
-3. Select **Save expense**. The dashboard selects the expense's month and updates the totals.
-4. Reload the page: expenses persist in the same browser and origin.
-5. Select **Delete** on an expense and confirm to remove it.
-
-Categories are currently fixed: Food, Transport, School, Bills, Personal and Other. Category totals are computed from expenses. No budgets or remaining-budget figures are simulated. Clearing browser data removes saved demo expenses; a fresh session seeds the examples again.
-
-### API status
-Components import `listExpenses`, `createExpense` and `deleteExpense` from `client/src/api/index.js`. Both adapters expose those functions. Monetary amounts use integer `amount_centavos`; expense dates use `YYYY-MM-DD`.
-
-| Method | Path | Purpose | Status |
-| --- | --- | --- | --- |
-| GET | `/api/expenses` | List expenses | HTTP adapter prepared; server route not implemented |
-| POST | `/api/expenses` | Create an expense | HTTP adapter prepared; server route not implemented |
-| DELETE | `/api/expenses/:id` | Delete an expense | HTTP adapter prepared; server route not implemented |
-| GET | `/healthz` | Check API process | Existing server starter |
-| GET | `/readyz` | Check database connectivity | Existing server starter |
-| GET / POST | `/api/sightings` | List / create sightings | Existing server starter |
-| GET / PUT / DELETE | `/api/sightings/:id` | Read / update / delete a sighting | Existing server starter |
-
-## 5. Project structure
-```text
-client/
-  src/App.jsx                 Dashboard, expense form and monthly summaries
-  src/styles.css              Mobile-first styling and desktop layouts
-  src/main.jsx                React entry point
-  src/api/index.js            Shared mock/HTTP interface
-  src/api/mockApi.js          Browser persistence and expense validation
-  src/api/httpApi.js          Planned expense HTTP requests
-  src/api/seed.json           Fictional expense examples
-  src/components/DemoNotice.jsx
-  index.html                  Title and metadata
-server/
-  server.js                   Existing Express sightings routes
-  sightingsRepo.js            Parameterized SQL queries
-  db/                         PostgreSQL pool, schema, seed and SQL runner
-docs/assets/                  Running-app screenshots
-.github/workflows/            GitHub Pages deployment
-REPORT.md                     Week 1 increment report
-AI-USAGE.md                   AI assistance record
+npm.cmd run dev
 ```
 
-## 6. Screenshots
-Running Week 1 demo at desktop and phone-sized browser widths:
+Open **http://localhost:5173**. Real mode shows Login; choose Create an account to register. The API runs on port 3000. Vite forwards `/api` requests to it. If Vite selects another port, update the allowed origin in `server/.env` and restart the API.
 
-![BudgetWise dashboard at desktop width](docs/assets/week1-desktop.png)
+Health checks:
+- `http://localhost:3000/healthz` checks the API process.
+- `http://localhost:3000/readyz` checks database access and migrations.
 
-![BudgetWise dashboard at phone width](docs/assets/week1-mobile.png)
+Build with `npm.cmd run build` in `client/`. `npm.cmd run preview` serves the build; real API testing through preview requires an explicit API URL and an allowed preview origin because the development proxy does not apply there.
 
-## 7. Known issues and next steps
-- Expenses are stored only in this browser, not shared or backed up. The real adapter is prepared, but enabling it now will hit unimplemented expense routes.
-- Budget creation, editing expenses, custom category management, accounts and per-user access control are not implemented.
-- The server and database still contain the original sightings domain. They must be adapted and validated before switching out of demo mode.
-- Live deployment, physical-phone testing and PostgreSQL connectivity are not verified for this increment.
-- Fonts use Google Fonts when available and fall back to system fonts offline.
-- Next: add budgets and category management in mock mode, then implement matching Express endpoints and PostgreSQL tables.
+## Features and usage
+- **Accounts:** register using a name, email and 12–128 character password; log in, refresh while staying signed in, and log out.
+- **Dashboard:** review monthly spending, expense count, recent expenses and spending by category.
+- **Expenses:** add/delete entries, search descriptions, filter by category and sort records.
+- **Budgets:** set or edit a monthly limit per category and view progress or overspending.
+- **Categories:** browse six fixed categories and open the matching expenses.
+- **Responsive navigation:** top navigation on desktop and bottom navigation on phones.
+
+New real accounts start empty. Their data is stored in PostgreSQL and is filtered by the server-derived user ID. Demo data stays in localStorage and is not imported automatically. Clearing browser storage does not delete PostgreSQL account records.
+
+### Main API endpoints
+- `GET /api/auth/me` — current user (or null) and a CSRF token.
+- `POST /api/auth/register` — create an account and sign in.
+- `POST /api/auth/login` — verify credentials and sign in.
+- `POST /api/auth/logout` — destroy the session.
+- `GET /api/expenses` — list owned expenses.
+- `POST /api/expenses` — create an owned expense.
+- `PUT /api/expenses/:id` — update an owned expense (UI pending).
+- `DELETE /api/expenses/:id` — delete an owned expense.
+- `GET /api/budgets` — list owned budgets.
+- `PUT /api/budgets/:month/:category` — set an owned category limit.
+- `DELETE /api/budgets/:month/:category` — remove an owned limit (UI pending).
+
+Mutating requests require an allowed Origin, JSON and a session-bound CSRF token. The HTTP adapter handles cookies and tokens. Passwords are salted and hashed with scrypt; the browser cookie is HTTP-only. Details are in [the authentication guide](docs/week-2-auth.md).
+
+## Project structure
+- `client/src/AuthRoot.jsx` — Login/Register, session restoration and logout.
+- `client/src/App.jsx` — Dashboard, Expenses, Budgets and Categories.
+- `client/src/styles.css` — responsive app and authentication styling.
+- `client/src/api/` — shared interface, mock implementation and real HTTP requests.
+- `server/app.js` — Express authentication, request protection and owned-data routes.
+- `server/passwords.js` — password hashing and verification.
+- `server/validation.js` — server-side validation.
+- `server/db/migrations/` — versioned PostgreSQL schema.
+- `server/db/migrate.js` — transaction-based migration runner.
+- `server/test/auth.test.js` — integration tests against real PostgreSQL in a temporary schema.
+- `docs/week-2-auth.md` — full configuration and startup guide.
+
+## Screenshots
+These are the earlier Week 1 interface screenshots. Authentication screenshots remain to be captured after visual browser verification.
+
+![Week 1 desktop dashboard](docs/assets/week1-desktop.png)
+![Week 1 mobile dashboard](docs/assets/Week1_Mobile.png)
+
+## Verification and known limitations
+- Real PostgreSQL integration checks passed for registration, duplicate emails, hashing, incorrect credentials, request protection, account isolation, API restarts, logout, session expiration and throttling.
+- Production frontend build passed. The local database start/stop commands and repeatable migrations were checked.
+- Automated browser access was unavailable during the Week 2 work; visual and full browser-flow verification remains to be completed.
+- Password reset, email verification, expense-editing UI, budget-deletion UI and custom categories remain future work.
+- Live hosting and physical-phone authentication are not yet verified. For production, prefer same-site frontend/API hosting; unrelated domains can run into third-party cookie restrictions.
+- The existing Pages workflow can still publish the mock demo. Do not disable mock mode in the hosted build until the API/database and HTTPS cookie configuration are deployed and tested.
+- The rate limiter is per API process. Multiple production replicas need a shared limiter store.
 
 ## AI assistance
-OpenAI Codex assisted with repository inspection, the Week 1 client implementation, checks and documentation drafts. See [AI-USAGE.md](AI-USAGE.md) for the record. The student should review and understand the changes before submission.
+OpenAI Codex assisted with code, tests, setup and documentation. See [AI-USAGE.md](AI-USAGE.md). Review and understand generated work before submitting it.
 
 ## License
 MIT; see [LICENSE](LICENSE).
-
-## Verification for this increment
-- Production client build passed, including generation of the GitHub Pages fallback page.
-- Browser checks passed for add, reload persistence, delete, exact centavo totals, empty-month display, invalid amount rejection and corrupted-storage error/retry.
-- Checked browser widths of 390px and 320px for horizontal overflow; none detected. Desktop and phone-width screenshots are included in the README.
-- These are local checks. Physical-phone use, deployment and PostgreSQL are still unverified.

@@ -1,0 +1,1 @@
+console.log('Real accounts start empty. Register through the app; demo examples stay in client/src/api/seed.json. No data was changed.')\n

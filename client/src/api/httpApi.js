@@ -1,26 +1,42 @@
-// Contract for the next milestone. Express expense routes are not implemented yet.
 const BASE = import.meta.env.VITE_API_BASE_URL || ''
-
-async function request(path, options) {
+let csrfToken = null
+let sessionRequest = null
+async function request(path, options = {}) {
   const response = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
     ...options,
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}), ...options.headers },
   })
   if (!response.ok) {
     let message = `${response.status} ${response.statusText}`
-    try {
-      const body = await response.json()
-      if (body?.error) message = body.error
-    } catch { /* Keep the HTTP status if the response is not JSON. */ }
-    throw new Error(message)
+    try { const body = await response.json(); if (body?.error) message = body.error } catch { /* Retain the HTTP status. */ }
+    if (response.status === 401 && !path.startsWith('/api/auth/')) { csrfToken = null; window.dispatchEvent(new Event('budgetwise:session-expired')) }
+    throw Object.assign(new Error(message), { status: response.status })
   }
   return response.status === 204 ? null : response.json()
 }
-
+export function getSession() {
+  if (!sessionRequest) sessionRequest = request('/api/auth/me').then((data) => {
+    csrfToken = data.csrfToken
+    return data.user
+  }).finally(() => { sessionRequest = null })
+  return sessionRequest
+}
+async function authenticate(path, input) {
+  await getSession()
+  const data = await request(path, { method: 'POST', body: JSON.stringify(input) })
+  csrfToken = data.csrfToken
+  return data.user
+}
+export const login = (input) => authenticate('/api/auth/login', input)
+export const register = (input) => authenticate('/api/auth/register', input)
+export async function logout() {
+  await request('/api/auth/logout', { method: 'POST', body: '{}' })
+  csrfToken = null
+}
 export const listExpenses = () => request('/api/expenses')
 export const createExpense = (input) => request('/api/expenses', { method: 'POST', body: JSON.stringify(input) })
-export const deleteExpense = (id) => request(`/api/expenses/${encodeURIComponent(id)}`, { method: 'DELETE' })
-
-// Matching contract only; these routes will be implemented with the backend.
+export const deleteExpense = (id) => request(`/api/expenses/${encodeURIComponent(id)}`, { method: 'DELETE', body: '{}' })
 export const listBudgets = () => request('/api/budgets')
 export const saveBudget = (input) => request(`/api/budgets/${encodeURIComponent(input.month)}/${encodeURIComponent(input.category)}`, { method: 'PUT', body: JSON.stringify(input) })
+export const deleteBudget = (month, category) => request(`/api/budgets/${encodeURIComponent(month)}/${encodeURIComponent(category)}`, { method: 'DELETE', body: '{}' })

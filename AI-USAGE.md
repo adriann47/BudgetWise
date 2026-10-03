@@ -1,3 +1,13 @@
+# Week 2 AI assistance
+
+## October 1, 2026 — Week 2 authentication
+- **Tool:** OpenAI Codex.
+- **Request:** Implement Login/Register screens and working Express/PostgreSQL authentication together.
+- **Changes:** Account screens, salted scrypt hashes, PostgreSQL session storage, HTTP-only cookies, CSRF and origin checks, authentication throttling, private expense/budget routes, migrations, and local database setup.
+- **Checks:** Real PostgreSQL integration tests passed, including two-user isolation, logout, expiry and API restarts. Frontend production build passed. Browser automation was unavailable, so visual browser testing remains outstanding.
+- **Issue resolved:** Windows PowerShell blocked the npm PowerShell wrapper, so commands use npm.cmd. The PostgreSQL control program could not create a restricted token in the sandbox; launching the installed database process directly with a hidden window worked, and the start/stop script was verified.
+- **Privacy:** Local credentials and database files are git-ignored. No real-user data was seeded. Tests use a disposable, randomly named database schema.
+- **Student review and commit:** Pending. Add the actual commit link and your own explanation after review.
 # AI usage — BudgetWise
 
 ## September 24, 2026 — Week 1 foundation
