@@ -19,6 +19,8 @@ h1 { font-size: clamp(28px, 4vw, 40px); line-height: 1.2; letter-spacing: -.045e
 h2 { font-size: 18px; margin: 0; letter-spacing: -.025em; }
 h3 { font-size: 14px; margin: 0; }
 p { line-height: 1.6; }
+.active-text {color: green; font-weight: 600; margin-right: 12px;}
+.archived-text {color: black; font-weight: 600;}
 .muted { color: var(--muted); font-size: 14px; }
 .demo-notice { display: flex; flex-direction: column; gap: 5px; font-size: 12px; line-height: 1.6; background: #edf0e6; border: 1px solid #dbe2cc; padding: 13px 16px; border-radius: 10px; margin-bottom: 28px; }
 .demo-notice strong { white-space: nowrap; }
@@ -159,3 +161,17 @@ dialog::backdrop { background: #102d2acc; backdrop-filter: blur(3px); }
   .auth-panel { padding: 48px; }
   .mobile-wordmark { display: none; }
 }
+/* Account and category management */
+.profile-link { color:var(--green, #17483f); font-weight:700; padding:12px; }
+.profile-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; }
+.profile-grid input, .category-editor input { width:100%; }
+.profile-grid label, .category-editor label { display:block; margin-top:16px; }
+.profile-grid button { margin-top:16px; }
+.category-editor { margin-bottom:24px; max-width:680px; }
+.category-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:20px; }
+.category-tile h2, .category-tile p, .profile-grid input { overflow-wrap:anywhere; }
+.checkbox-label { display:flex; align-items:center; gap:10px; margin:20px 0; }
+.checkbox-label input { width:auto; }
+.unbudgeted { margin-bottom:24px; }
+.unbudgeted-row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 0; border-top:1px solid #e1e7e1; }
+@media(max-width:640px) { .profile-grid { grid-template-columns:1fr; } .unbudgeted-row { align-items:flex-start; flex-direction:column; } .profile-link { margin-left:auto; } }

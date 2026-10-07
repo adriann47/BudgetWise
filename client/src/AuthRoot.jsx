@@ -28,7 +28,7 @@ export default function AuthRoot() {
   }
   if (USING_MOCK_API) return <App />
   if (state === 'loading' || state === 'error') return <main className="auth-status"><a className="auth-wordmark" href="#/login">BudgetWise</a><h1>{state === 'loading' ? 'Getting things ready...' : 'Let’s reconnect.'}</h1>{state === 'loading' ? <p role="status">Checking your session.</p> : <><p role="alert">{error}</p><button onClick={restore}>Try again</button></>}</main>
-  if (user) return <><div className="account-strip"><span>Signed in as <strong>{user.name}</strong></span><button className="secondary" onClick={signOut} disabled={busy}>{busy ? 'Logging out...' : 'Log out'}</button></div>{error && <p className="account-error" role="alert">{error}</p>}<App key={user.id} /></>
+  if (user) return <>{error && <p className="account-error" role="alert">{error}</p>}<App key={user.id} user={user} onUserChanged={setUser} onLogout={signOut} logoutBusy={busy} /></>
   return <AuthScreen serverMessage={error} onAuthenticated={(current) => { setUser(current); setError(''); window.location.hash = '/dashboard' }} />
 }
 

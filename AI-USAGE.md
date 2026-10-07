@@ -1,3 +1,10 @@
+## October 4, 2026 - Categories, Profile and budget clarity
+- Tool: OpenAI Codex, following the approved feature proposal.
+- Changes: account-owned category IDs, add/edit/archive/restore UI and API, record-preserving migration, display name and password settings, clearer unbudgeted spending breakdown, mock persistence migration and documentation.
+- Verification: PostgreSQL integration suite passed (11 reported tests including parent suite); mock adapter tests passed (2); production build passed using Vite native config loader. Tests used a disposable schema and did not migrate the application's public tables.
+- Limits: browser runtime unavailable; visual and interactive UI review still pending. Work prepared in a separate working copy because local repository write permission was not granted. Apply the patch and migration before using these features.
+- Student review: pending. No commit or push performed by Codex.
+
 # Week 2 AI assistance
 
 ## October 1, 2026 — Week 2 authentication

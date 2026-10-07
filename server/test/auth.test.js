@@ -11,7 +11,8 @@ test('PostgreSQL authentication, sessions, ownership and request protection', as
   const schema = `bw_test_${randomBytes(8).toString('hex')}`
   assert.match(schema, /^bw_test_[a-f0-9]{16}$/)
   await adminPool.query(`CREATE SCHEMA "${schema}"`)
-  const pool = new pg.Pool({ ...adminPool.options, options: `-c search_path=${schema}` })
+  const pool = new pg.Pool({ ...adminPool.options, options: undefined })
+  pool.on('connect', client => { client.query(`SET search_path TO "${schema}"`).catch(() => {}) })
   const config = { SESSION_SECRET: randomBytes(48).toString('hex'), CORS_ORIGINS: 'http://localhost:5173', NODE_ENV: 'test' }
   let app, server, base
   const start = async () => {
@@ -35,7 +36,15 @@ test('PostgreSQL authentication, sessions, ownership and request protection', as
     }
   }
   try {
+    assert.equal((await pool.query('SELECT current_schema() AS name')).rows[0].name, schema)
     await pool.query(await readFile(new URL('../db/migrations/001-budgetwise.sql', import.meta.url), 'utf8'))
+    const legacy = await pool.query("INSERT INTO users(name,email,password_hash) VALUES('Legacy','legacy@example.test','unused') RETURNING id")
+    await pool.query("INSERT INTO expenses(user_id,title,amount_centavos,category,spent_on) VALUES($1,'Existing expense',1234,'Food','2026-10-01')",[legacy.rows[0].id])
+    await pool.query("INSERT INTO budgets(user_id,month,category,amount_centavos) VALUES($1,'2026-10','Food',9999)",[legacy.rows[0].id])
+    await pool.query(await readFile(new URL('../db/migrations/002-categories-profile.sql', import.meta.url), 'utf8'))
+    assert.equal((await pool.query('SELECT count(*)::int AS n FROM categories WHERE user_id=$1',[legacy.rows[0].id])).rows[0].n,6)
+    const preserved = await pool.query('SELECT e.amount_centavos,b.amount_centavos AS budget,c.name FROM expenses e JOIN categories c ON c.id=e.category_id JOIN budgets b ON b.category_id=c.id WHERE e.user_id=$1',[legacy.rows[0].id])
+    assert.deepEqual(preserved.rows[0],{amount_centavos:1234,budget:9999,name:'Food'})
     await start()
     const alice = agent(), bob = agent(), stranger = agent()
     const password = 'Test-only passphrase 781!'
@@ -97,6 +106,45 @@ test('PostgreSQL authentication, sessions, ownership and request protection', as
       assert.equal((await alice.call('/api/auth/login', 'POST', { email: 'alice@example.test', password })).status, 200)
       assert.equal((await alice.call('/api/expenses')).data.length, 1)
       assert.equal((await alice.call(`/api/expenses/${id}`, 'DELETE', {})).status, 204)
+    })
+    await t.test('categories isolate accounts; rename and archive preserve history', async () => {
+      assert.equal((await alice.call('/api/categories')).data.length,6)
+      const created=await alice.call('/api/categories','POST',{name:'Hobbies',description:'Things I enjoy'})
+      assert.equal(created.status,201)
+      const cat=created.data
+      assert.equal((await bob.call('/api/categories/'+cat.id,'PUT',{name:'Stolen'})).status,404)
+      assert.equal((await bob.call('/api/expenses','POST',{...expense,category_id:cat.id})).status,400)
+      assert.equal((await bob.call('/api/budgets/2026-10/'+cat.id,'PUT',{amount_centavos:1000})).status,400)
+      assert.equal((await alice.call('/api/categories','POST',{name:' hobbies '})).status,409)
+      const exp=await alice.call('/api/expenses','POST',{...expense,category_id:cat.id})
+      assert.equal(exp.status,201)
+      assert.equal((await alice.call('/api/budgets/2026-10/'+cat.id,'PUT',{amount_centavos:20000})).status,200)
+      assert.equal((await alice.call('/api/categories/'+cat.id,'PUT',{name:'Leisure',description:'Fun'})).status,200)
+      assert.equal((await alice.call('/api/expenses')).data.find(e=>e.id===exp.data.id).category,'Leisure')
+      assert.equal((await alice.call('/api/budgets')).data.find(b=>b.category_id===cat.id).category,'Leisure')
+      assert.equal((await alice.call('/api/categories/'+cat.id,'PUT',{name:'Leisure',description:'Fun',archived:true})).status,200)
+      assert.equal((await alice.call('/api/expenses','POST',{...expense,category_id:cat.id})).status,400)
+      assert.equal((await alice.call('/api/budgets/2026-11/'+cat.id,'PUT',{amount_centavos:20000})).status,400)
+      assert.ok((await alice.call('/api/expenses')).data.some(e=>e.id===exp.data.id))
+      assert.equal((await alice.call('/api/categories/'+cat.id,'PUT',{name:'Leisure',archived:false})).status,200)
+      assert.equal((await alice.call('/api/expenses','POST',{...expense,category_id:cat.id})).status,201)
+    })
+    await t.test('profile ownership, password validation and session invalidation', async () => {
+      const original=(await alice.call('/api/profile')).data
+      assert.ok(original.created_at)
+      assert.equal((await alice.call('/api/profile','PATCH',{name:'Updated Alice',email:'ignored@example.test',id:9999})).data.email,original.email)
+      assert.equal((await bob.call('/api/profile')).data.name,'Bob')
+      const second=agent();await second.call('/api/auth/me')
+      await second.call('/api/auth/login','POST',{email:original.email,password})
+      const replacement='A different passphrase 928!'
+      assert.equal((await alice.call('/api/profile/password','POST',{currentPassword:'An incorrect password',newPassword:replacement,confirmPassword:replacement})).status,400)
+      assert.equal((await alice.call('/api/profile/password','POST',{currentPassword:password,newPassword:replacement,confirmPassword:'mismatch'})).status,400)
+      assert.equal((await alice.call('/api/profile/password','POST',{currentPassword:password,newPassword:replacement,confirmPassword:replacement})).status,200)
+      assert.equal((await alice.call('/api/expenses')).status,200)
+      assert.equal((await second.call('/api/expenses')).status,401)
+      assert.equal((await second.call('/api/auth/me')).data.user,null)
+      assert.equal((await second.call('/api/auth/login','POST',{email:original.email,password})).status,401)
+      assert.equal((await second.call('/api/auth/login','POST',{email:original.email,password:replacement})).status,200)
     })
     await t.test('expired sessions are rejected', async () => {
       await pool.query("UPDATE user_sessions SET expire=now()-interval '1 minute'")

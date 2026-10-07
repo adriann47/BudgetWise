@@ -1,4 +1,3 @@
-const categories = ['Food', 'Transport', 'School', 'Bills', 'Personal', 'Other']
 export const failure = (message, status = 400) => Object.assign(new Error(message), { status })
 export function email(value) {
   if (typeof value !== 'string') throw failure('Enter a valid email address.')
@@ -19,8 +18,8 @@ export function amount(value) {
   return value
 }
 export function category(value) {
-  if (!categories.includes(value)) throw failure('Choose a valid category.')
-  return value
+  if (typeof value !== 'string' || !value.trim() || value.trim().length > 40) throw failure('Enter a category name with 1-40 characters.')
+  return value.trim()
 }
 export function month(value) {
   if (typeof value !== 'string' || !/^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(value)) throw failure('Choose a valid month.')
@@ -33,5 +32,5 @@ export function expense(body) {
   if (typeof date !== 'string' || !/^[1-9]\d{3}-\d{2}-\d{2}$/.test(date)) throw failure('Choose a valid date.')
   const parsed = new Date(`${date}T12:00:00Z`)
   if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) throw failure('Choose a valid date.')
-  return { title, amount_centavos: amount(body.amount_centavos), category: category(body.category), spent_on: date }
+  return { title, amount_centavos: amount(body.amount_centavos),  spent_on: date }
 }

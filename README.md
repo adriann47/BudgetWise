@@ -5,8 +5,10 @@ BudgetWise is a mobile-first expense and budgeting app for students. It tracks e
 
 Week 2 adds Login, Register and Logout, PostgreSQL-backed sessions, and private expense/budget records for each account. The browser-only Week 1 demo remains available through the original mock API switch.
 
+See [Categories and Profile](docs/week-2-categories-profile.md) for this update, migration instructions, API additions and checks.
+
 ## Setup and installation
-Requirements: Git, Node.js 22 or newer with npm, and PostgreSQL 17 or newer for real accounts. The database is not needed in demo mode.
+Requirements: Git, Node.js 22 or newer with npm, and PostgreSQL 17 or newer (local or hosted on Supabase) for real accounts. The database is not needed in demo mode.
 
 ```powershell
 git clone https://github.com/adriann47/BudgetWise.git
@@ -16,7 +18,7 @@ npm.cmd install
 Copy-Item .env.example .env
 ```
 
-Create a PostgreSQL database named `budgetwise`, owned by a dedicated login role. Configure `DATABASE_URL` and a random `SESSION_SECRET` in the private `server/.env`. Example URL: `postgresql://budgetwise:YOUR_PASSWORD@127.0.0.1:5432/budgetwise`.
+For Supabase, use your project?s Session pooler PostgreSQL URL, keep the Data API disabled, and set DATABASE_CA_FILE to your downloaded certificate if needed. For local PostgreSQL, create a database named `budgetwise`, owned by a dedicated login role. Configure `DATABASE_URL` and a random `SESSION_SECRET` in the private `server/.env`. Example URL: `postgresql://budgetwise:YOUR_PASSWORD@127.0.0.1:5432/budgetwise`.
 
 Generate your own secret and put its output into `SESSION_SECRET`:
 
@@ -66,7 +68,7 @@ For the standalone browser demo, use `VITE_USE_MOCK_API=true`. Demo mode does no
 Never commit `.env`, session secrets or database credentials. All `VITE_` values are public. Restart Vite after changing local configuration; rebuild when changing deployment variables.
 
 ## How to run
-Start PostgreSQL first. Then in `server/`:
+With Supabase, keep the hosted database available; no local database startup is needed. With local PostgreSQL, start it first. Then in `server/`:
 
 ```powershell
 npm.cmd run dev
@@ -91,7 +93,8 @@ Build with `npm.cmd run build` in `client/`. `npm.cmd run preview` serves the bu
 - **Dashboard:** review monthly spending, expense count, recent expenses and spending by category.
 - **Expenses:** add/delete entries, search descriptions, filter by category and sort records.
 - **Budgets:** set or edit a monthly limit per category and view progress or overspending.
-- **Categories:** browse six fixed categories and open the matching expenses.
+- **Categories:** add, edit, archive and restore your categories; view their expenses.
+- **Profile:** edit your display name, view email and join date, change your password and log out.
 - **Responsive navigation:** top navigation on desktop and bottom navigation on phones.
 
 New real accounts start empty. Their data is stored in PostgreSQL and is filtered by the server-derived user ID. Demo data stays in localStorage and is not imported automatically. Clearing browser storage does not delete PostgreSQL account records.
@@ -134,7 +137,7 @@ These are the earlier Week 1 interface screenshots. Authentication screenshots r
 - Real PostgreSQL integration checks passed for registration, duplicate emails, hashing, incorrect credentials, request protection, account isolation, API restarts, logout, session expiration and throttling.
 - Production frontend build passed. The local database start/stop commands and repeatable migrations were checked.
 - Automated browser access was unavailable during the Week 2 work; visual and full browser-flow verification remains to be completed.
-- Password reset, email verification, expense-editing UI, budget-deletion UI and custom categories remain future work.
+- Password reset, email verification, expense-editing UI, budget-deletion UI remain future work.
 - Live hosting and physical-phone authentication are not yet verified. For production, prefer same-site frontend/API hosting; unrelated domains can run into third-party cookie restrictions.
 - The existing Pages workflow can still publish the mock demo. Do not disable mock mode in the hosted build until the API/database and HTTPS cookie configuration are deployed and tested.
 - The rate limiter is per API process. Multiple production replicas need a shared limiter store.

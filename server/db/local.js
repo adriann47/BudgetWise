@@ -14,7 +14,7 @@ if (action === 'start') {
   if (status.status === 0) { console.log('PostgreSQL is already running.'); process.exit(0) }
   // Launch directly: pg_ctl's restricted-token launcher fails inside some Windows sandboxes.
   const log = openSync(path.join(root, 'postgres.log'), 'a')
-  const processHandle = spawn(path.join(bin, 'postgres.exe'), ['-D', data], { windowsHide: true, detached: true, stdio: ['ignore', log, log] })
+  const processHandle = spawn(path.join(bin, 'postgres.exe'), ['-D', data], { windowsHide: true, detached: false, stdio: ['ignore', log, log] })
   closeSync(log)
   processHandle.on('error', (error) => { console.error(error.message); process.exitCode = 1 })
   processHandle.unref()

@@ -38,5 +38,14 @@ export const listExpenses = () => request('/api/expenses')
 export const createExpense = (input) => request('/api/expenses', { method: 'POST', body: JSON.stringify(input) })
 export const deleteExpense = (id) => request(`/api/expenses/${encodeURIComponent(id)}`, { method: 'DELETE', body: '{}' })
 export const listBudgets = () => request('/api/budgets')
-export const saveBudget = (input) => request(`/api/budgets/${encodeURIComponent(input.month)}/${encodeURIComponent(input.category)}`, { method: 'PUT', body: JSON.stringify(input) })
+export const saveBudget = (input) => request(`/api/budgets/${encodeURIComponent(input.month)}/${encodeURIComponent(input.category_id)}`, { method: 'PUT', body: JSON.stringify(input) })
 export const deleteBudget = (month, category) => request(`/api/budgets/${encodeURIComponent(month)}/${encodeURIComponent(category)}`, { method: 'DELETE', body: '{}' })
+export const listCategories = () => request('/api/categories')
+export const createCategory = (input) => request('/api/categories', { method:'POST', body:JSON.stringify(input) })
+export const updateCategory = (id,input) => request('/api/categories/'+encodeURIComponent(id), { method:'PUT', body:JSON.stringify(input) })
+export const updateProfile = (input) => request('/api/profile', { method:'PATCH', body:JSON.stringify(input) })
+export async function changePassword(input) {
+  const data = await request('/api/profile/password', { method:'POST', body:JSON.stringify(input) })
+  csrfToken = data.csrfToken
+  return data.user
+}

@@ -6,10 +6,11 @@ import connectPgSimple from 'connect-pg-simple'
 import { rateLimit } from 'express-rate-limit'
 import { randomBytes, timingSafeEqual } from 'node:crypto'
 import { hashPassword, verifyPassword } from './passwords.js'
+import { addAccountRoutes } from './accountRoutes.js'
 import * as validate from './validation.js'
 
 const route = (handler) => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next)
-const publicUser = (row) => ({ id: row.id, name: row.name, email: row.email })
+const publicUser = (row) => ({ id: row.id, name: row.name, email: row.email, created_at: row.created_at })
 const regenerate = (req) => new Promise((resolve, reject) => req.session.regenerate((error) => error ? reject(error) : resolve()))
 const save = (req) => new Promise((resolve, reject) => req.session.save((error) => error ? reject(error) : resolve()))
 const destroy = (req) => new Promise((resolve, reject) => req.session.destroy((error) => error ? reject(error) : resolve()))
@@ -56,8 +57,8 @@ export function createApp(pool, config = process.env) {
     if (!req.session.csrfToken) req.session.csrfToken = token()
     let user = null
     if (req.session.userId) {
-      const result = await pool.query('SELECT id, name, email FROM users WHERE id=$1', [req.session.userId])
-      if (result.rows[0]) user = publicUser(result.rows[0])
+      const result = await pool.query('SELECT id, name, email, created_at, auth_version FROM users WHERE id=$1', [req.session.userId])
+      if (result.rows[0] && req.session.authVersion === result.rows[0].auth_version) user = publicUser(result.rows[0])
       else delete req.session.userId
     }
     await save(req)
@@ -66,6 +67,7 @@ export function createApp(pool, config = process.env) {
   async function signIn(req, res, user, status = 200) {
     await regenerate(req)
     req.session.userId = user.id
+    req.session.authVersion = user.auth_version
     req.session.csrfToken = token()
     await save(req)
     res.status(status).json({ user: publicUser(user), csrfToken: req.session.csrfToken })
@@ -77,7 +79,7 @@ export function createApp(pool, config = process.env) {
     const password = validate.password(body.password)
     const passwordHash = await hashPassword(password)
     try {
-      const result = await pool.query('INSERT INTO users(name,email,password_hash) VALUES ($1,$2,$3) RETURNING id,name,email', [name, email, passwordHash])
+      const result = await pool.query('INSERT INTO users(name,email,password_hash) VALUES ($1,$2,$3) RETURNING id,name,email,created_at,auth_version', [name, email, passwordHash])
       await signIn(req, res, result.rows[0], 201)
     } catch (error) {
       if (error.code === '23505') throw validate.failure('An account with this email already exists. Log in instead.', 409)
@@ -87,7 +89,7 @@ export function createApp(pool, config = process.env) {
   app.post('/api/auth/login', route(async (req, res) => {
     const email = validate.email(req.body?.email)
     const password = validate.password(req.body?.password)
-    const result = await pool.query('SELECT id,name,email,password_hash FROM users WHERE email=$1', [email])
+    const result = await pool.query('SELECT id,name,email,created_at,auth_version,password_hash FROM users WHERE email=$1', [email])
     const user = result.rows[0]
     const valid = await verifyPassword(password, user?.password_hash || dummyHash)
     if (!user || !valid) throw validate.failure('Email or password is incorrect.', 401)
@@ -102,52 +104,11 @@ export function createApp(pool, config = process.env) {
 
   app.use('/api', route(async (req, res, next) => {
     if (!req.session.userId) throw validate.failure('Please log in to continue.', 401)
-    const result = await pool.query('SELECT id FROM users WHERE id=$1', [req.session.userId])
-    if (!result.rowCount) throw validate.failure('Please log in to continue.', 401)
+    const result = await pool.query('SELECT id,auth_version FROM users WHERE id=$1', [req.session.userId])
+    if (!result.rowCount || req.session.authVersion !== result.rows[0].auth_version) throw validate.failure('Please log in to continue.', 401)
     next()
   }))
-  const expenseColumns = "id,title,amount_centavos,category,to_char(spent_on,'YYYY-MM-DD') AS spent_on"
-  app.get('/api/expenses', route(async (req, res) => {
-    const result = await pool.query(`SELECT ${expenseColumns} FROM expenses WHERE user_id=$1 ORDER BY spent_on DESC,id DESC`, [req.session.userId])
-    res.json(result.rows)
-  }))
-  app.post('/api/expenses', route(async (req, res) => {
-    const data = validate.expense(req.body || {})
-    const result = await pool.query(`INSERT INTO expenses(user_id,title,amount_centavos,category,spent_on) VALUES ($1,$2,$3,$4,$5) RETURNING ${expenseColumns}`, [req.session.userId, data.title, data.amount_centavos, data.category, data.spent_on])
-    res.status(201).json(result.rows[0])
-  }))
-  function expenseId(req) {
-    if (!/^[1-9]\d{0,9}$/.test(req.params.id) || Number(req.params.id) > 2147483647) throw validate.failure('Expense not found.', 404)
-    return Number(req.params.id)
-  }
-  app.put('/api/expenses/:id', route(async (req, res) => {
-    const id = expenseId(req)
-    const data = validate.expense(req.body || {})
-    const result = await pool.query(`UPDATE expenses SET title=$1,amount_centavos=$2,category=$3,spent_on=$4 WHERE id=$5 AND user_id=$6 RETURNING ${expenseColumns}`, [data.title, data.amount_centavos, data.category, data.spent_on, id, req.session.userId])
-    if (!result.rowCount) throw validate.failure('Expense not found.', 404)
-    res.json(result.rows[0])
-  }))
-  app.delete('/api/expenses/:id', route(async (req, res) => {
-    const result = await pool.query('DELETE FROM expenses WHERE id=$1 AND user_id=$2 RETURNING id', [expenseId(req), req.session.userId])
-    if (!result.rowCount) throw validate.failure('Expense not found.', 404)
-    res.status(204).end()
-  }))
-  app.get('/api/budgets', route(async (req, res) => {
-    const result = await pool.query('SELECT month,category,amount_centavos FROM budgets WHERE user_id=$1 ORDER BY month DESC,category', [req.session.userId])
-    res.json(result.rows)
-  }))
-  app.put('/api/budgets/:month/:category', route(async (req, res) => {
-    const month = validate.month(req.params.month)
-    const category = validate.category(req.params.category)
-    const amount = validate.amount(req.body?.amount_centavos)
-    const result = await pool.query('INSERT INTO budgets(user_id,month,category,amount_centavos) VALUES ($1,$2,$3,$4) ON CONFLICT(user_id,month,category) DO UPDATE SET amount_centavos=EXCLUDED.amount_centavos RETURNING month,category,amount_centavos', [req.session.userId, month, category, amount])
-    res.json(result.rows[0])
-  }))
-  app.delete('/api/budgets/:month/:category', route(async (req, res) => {
-    const result = await pool.query('DELETE FROM budgets WHERE user_id=$1 AND month=$2 AND category=$3 RETURNING month', [req.session.userId, validate.month(req.params.month), validate.category(req.params.category)])
-    if (!result.rowCount) throw validate.failure('Budget not found.', 404)
-    res.status(204).end()
-  }))
+  addAccountRoutes(app, pool, { route, signIn, authLimit })
   app.use((req, res) => res.status(404).json({ error: 'No such route.' }))
   app.use((error, req, res, next) => {
     if (res.headersSent) return next(error)
