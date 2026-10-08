@@ -1,3 +1,15 @@
+## October 8, 2026 - Database permissions and security records
+- **Tool:** OpenAI Codex.
+- **Request:** Separate runtime and administrator database access, guide the Supabase permission changes, and save the verified setup and security records.
+- **AI assistance:** Prepared the restricted-role setup, reviewed the SQL in a rolled-back transaction, explained grants and RLS, and prepared repeatable setup code and automated tests. Prepared an updated security checklist.
+- **My actions:** I applied the runtime-account setup, ran the permission SQL manually in Supabase, checked the verification results, and tested login/logout, expenses, budgets, categories and registration with a fictional email. I reported that these worked.
+- **What I kept and why:** A restricted Express account, an administrator connection for migrations/tests, and server-only RLS policies. Express continues checking which user owns each record.
+- **Correction:** The initial dashboard directions were imprecise; Codex checked the documentation and corrected the Data API location to Integrations > Data API > Overview.
+- **Verification:** The updated integration suite passed all 13 reported tests, including repeatable grants/RLS, future-object permissions and account isolation. The current runtime connection was confirmed as budgetwise_app without superuser, create-role, create-database or RLS-bypass privileges. All six current tables have RLS. Automated tests use a disposable schema and temporary login, not real application records.
+- **Limits:** Database policies trust Express and do not isolate individual users by themselves. Data API dashboard status, network restrictions and several GitHub checks remain unverified. This is not a complete deployment-security sign-off.
+- **Delivery:** The repeatable setup and documentation update were prepared as a patch because local write access was not granted. Apply and review it before treating those repository changes as installed.
+- **Commit:** Pending; add the actual commit link after committing. No commit or push was performed by Codex.
+
 ## October 4, 2026 - Categories, Profile and budget clarity
 - Tool: OpenAI Codex, following the approved feature proposal.
 - Changes: account-owned category IDs, add/edit/archive/restore UI and API, record-preserving migration, display name and password settings, clearer unbudgeted spending breakdown, mock persistence migration and documentation.

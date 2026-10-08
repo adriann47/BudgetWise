@@ -3,7 +3,10 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
 import pg from 'pg'
-import { pool as adminPool } from '../db/pool.js'
+import { pool as adminPool } from '../db/adminPool.js'
+import { createPool } from '../db/createPool.js'
+import { secureDatabase } from '../db/security.js'
+import { grantRuntimeAccess } from '../db/runtimeGrants.js'
 import { createApp } from '../app.js'
 
 // Isolated, randomly named schema. Real accounts and tables are never reset.
@@ -11,9 +14,11 @@ test('PostgreSQL authentication, sessions, ownership and request protection', as
   const schema = `bw_test_${randomBytes(8).toString('hex')}`
   assert.match(schema, /^bw_test_[a-f0-9]{16}$/)
   await adminPool.query(`CREATE SCHEMA "${schema}"`)
-  const pool = new pg.Pool({ ...adminPool.options, options: undefined })
+  let pool = new pg.Pool({ ...adminPool.options, options: undefined })
   pool.on('connect', client => { client.query(`SET search_path TO "${schema}"`).catch(() => {}) })
   const config = { SESSION_SECRET: randomBytes(48).toString('hex'), CORS_ORIGINS: 'http://localhost:5173', NODE_ENV: 'test' }
+  const runtimeRole = `bw_role_${randomBytes(8).toString('hex')}`
+  let roleCreated = false
   let app, server, base
   const start = async () => {
     app = createApp(pool, config)
@@ -45,6 +50,50 @@ test('PostgreSQL authentication, sessions, ownership and request protection', as
     assert.equal((await pool.query('SELECT count(*)::int AS n FROM categories WHERE user_id=$1',[legacy.rows[0].id])).rows[0].n,6)
     const preserved = await pool.query('SELECT e.amount_centavos,b.amount_centavos AS budget,c.name FROM expenses e JOIN categories c ON c.id=e.category_id JOIN budgets b ON b.category_id=c.id WHERE e.user_id=$1',[legacy.rows[0].id])
     assert.deepEqual(preserved.rows[0],{amount_centavos:1234,budget:9999,name:'Food'})
+    await pool.query('CREATE TABLE schema_migrations(name text PRIMARY KEY)')
+    const apiRoles = (await adminPool.query("SELECT rolname FROM pg_roles WHERE rolname IN ('anon','authenticated')")).rows.map(row => row.rolname)
+    // Model Supabase's older automatic grants inside this isolated schema.
+    for (const name of apiRoles) {
+      await adminPool.query(`GRANT ALL ON ALL TABLES IN SCHEMA "${schema}" TO "${name}"`)
+      await adminPool.query(`GRANT ALL ON ALL SEQUENCES IN SCHEMA "${schema}" TO "${name}"`)
+      await adminPool.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT ALL ON TABLES TO "${name}"`)
+      await adminPool.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA "${schema}" GRANT ALL ON SEQUENCES TO "${name}"`)
+    }
+    // Before any runtime role exists, migrations must still secure the schema.
+    await secureDatabase(pool, schema)
+    const runtimePassword = randomBytes(32).toString('hex')
+    await adminPool.query(`CREATE ROLE "${runtimeRole}" LOGIN PASSWORD '${runtimePassword}' NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`)
+    roleCreated = true
+    await grantRuntimeAccess(adminPool, runtimeRole, schema)
+    await grantRuntimeAccess(adminPool, runtimeRole, schema)
+    await t.test('RLS, API-role revocations and repeatable setup', async () => {
+      const tables = (await adminPool.query("SELECT c.oid,c.relname,c.relrowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=$1 AND c.relkind='r'",[schema])).rows
+      assert.equal(tables.length,6)
+      assert.ok(tables.every(table => table.relrowsecurity))
+      for (const name of apiRoles) {
+        for (const table of tables) assert.equal((await adminPool.query("SELECT has_table_privilege($1,$2::oid,'SELECT,INSERT,UPDATE,DELETE') AS allowed",[name,table.oid])).rows[0].allowed,false)
+      }
+      assert.equal((await adminPool.query("SELECT count(*)::int AS n FROM pg_policies WHERE schemaname=$1 AND policyname='budgetwise_server_access'",[schema])).rows[0].n,5)
+      await adminPool.query(`CREATE TABLE "${schema}".future_probe(id SERIAL)`)
+      for (const name of apiRoles) {
+        assert.equal((await adminPool.query("SELECT has_table_privilege($1,$2,'SELECT,INSERT,UPDATE,DELETE') AS allowed",[name,schema+'.future_probe'])).rows[0].allowed,false)
+        assert.equal((await adminPool.query("SELECT has_sequence_privilege($1,$2,'USAGE,SELECT,UPDATE') AS allowed",[name,schema+'.future_probe_id_seq'])).rows[0].allowed,false)
+      }
+      await adminPool.query(`DROP TABLE "${schema}".future_probe`)
+    })
+    await pool.end()
+    const runtimeUrl = new URL(process.env.ADMIN_DATABASE_URL || process.env.DATABASE_URL)
+    const username = decodeURIComponent(runtimeUrl.username)
+    runtimeUrl.username = runtimeRole + (username.includes('.') ? username.slice(username.indexOf('.')) : '')
+    runtimeUrl.password = runtimePassword
+    pool = createPool(runtimeUrl.toString())
+    pool.on('connect', client => { client.query(`SET search_path TO "${schema}"`).catch(() => {}) })
+    assert.equal((await pool.query('SELECT current_user AS name')).rows[0].name, runtimeRole)
+    await t.test('runtime role cannot alter schema, truncate data or create roles', async () => {
+      for (const sql of ['CREATE TABLE forbidden_probe(id int)', 'ALTER TABLE users ADD COLUMN forbidden_probe int', 'TRUNCATE users', 'SELECT * FROM schema_migrations', `CREATE ROLE "${runtimeRole}_probe" NOLOGIN`]) {
+        await assert.rejects(pool.query(sql), { code: '42501' })
+      }
+    })
     await start()
     const alice = agent(), bob = agent(), stranger = agent()
     const password = 'Test-only passphrase 781!'
@@ -160,6 +209,10 @@ test('PostgreSQL authentication, sessions, ownership and request protection', as
     if (server?.listening) await stop()
     await pool.end()
     await adminPool.query(`DROP SCHEMA "${schema}" CASCADE`)
+    if (roleCreated) {
+      await adminPool.query(`DROP ROLE IF EXISTS "${runtimeRole}_probe"`)
+      await adminPool.query(`DROP ROLE "${runtimeRole}"`)
+    }
     await adminPool.end()
   }
 })

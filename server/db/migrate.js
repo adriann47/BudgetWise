@@ -1,5 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises'
-import { pool } from './pool.js'
+import { pool } from './adminPool.js'
+import { secureDatabase } from './security.js'
+import { grantRuntimeAccess } from './runtimeGrants.js'
 
 const client = await pool.connect()
 try {
@@ -14,6 +16,9 @@ try {
     await client.query('INSERT INTO schema_migrations(name) VALUES ($1)', [name])
     console.log(`Applied ${name}`)
   }
+  const runtime = await client.query("SELECT 1 FROM pg_roles WHERE rolname='budgetwise_app'")
+  if (runtime.rowCount) await grantRuntimeAccess(client, 'budgetwise_app')
+  else await secureDatabase(client)
   await client.query('COMMIT')
   console.log('Database migrations are up to date.')
 } catch (error) {

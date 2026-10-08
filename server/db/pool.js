@@ -1,14 +1,2 @@
-import pg from 'pg'
-import { readFileSync } from 'node:fs'
-if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required. Configure server/.env first.')
-const url = new URL(process.env.DATABASE_URL)
-// Local development has no TLS. Hosted TLS verifies the server certificate.
-const local = ['localhost', '127.0.0.1', '::1', '[::1]', 'db'].includes(url.hostname)
-const tls = !local || process.env.DATABASE_SSL === 'true'
-for (const parameter of ['sslmode','sslcert','sslkey','sslrootcert']) url.searchParams.delete(parameter)
-export const pool = new pg.Pool({
-  connectionString: url.toString(),
-  ssl: tls ? { rejectUnauthorized: true, ...(process.env.DATABASE_CA_FILE ? { ca: readFileSync(process.env.DATABASE_CA_FILE, 'utf8') } : {}) } : false,
-  max: 5, idleTimeoutMillis: 10000, connectionTimeoutMillis: 5000,
-})
-pool.on('error', (error) => console.error('Database pool error:', error.code || error.name))
+import { createPool } from './createPool.js'
+export const pool = createPool(process.env.DATABASE_URL)

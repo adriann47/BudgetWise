@@ -12,7 +12,8 @@
     "db:local:start": "node db/local.js start",
     "db:local:stop": "node db/local.js stop",
     "db:local:status": "node db/local.js status",
-    "test": "node --env-file=.env --test --test-concurrency=1 test/auth.test.js"
+    "test": "node --env-file=.env --test --test-concurrency=1 test/auth.test.js",
+    "db:runtime:setup": "node --env-file=.env db/setup-runtime.js"
   },
   "engines": {
     "node": ">=20"
