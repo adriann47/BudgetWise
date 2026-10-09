@@ -1,0 +1,14 @@
+.git
+.local
+.env
+.env.*
+**/.env
+**/.env.*
+**/node_modules
+**/dist
+server/test
+server/db/local.js
+server/db/setup-runtime.js
+server/db/adminPool.js
+server/db/migrate.js
+server/db/migrations

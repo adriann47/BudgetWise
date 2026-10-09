@@ -1,0 +1,14 @@
+{
+  "name": "budgetwise-deployment",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "build": "node scripts/build-vercel.js"
+  },
+  "dependencies": {
+    "@vercel/functions": "3.9.11"
+  }
+}

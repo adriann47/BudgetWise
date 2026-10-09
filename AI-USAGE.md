@@ -1,3 +1,13 @@
+## October 9, 2026 - Vercel deployment preparation
+- **Tool:** OpenAI Codex.
+- **Request:** Prepare BudgetWise for deployment to Vercel while I create the account and import the private GitHub repository manually.
+- **AI assistance:** Prepared a single-project frontend/API configuration, Vercel handler, managed connection-pool hook, exact deployment-origin settings, secure-cookie configuration, environment-based CA certificate support and deployment instructions. Updated the vulnerable build-only source-map-js dependency through the existing lockfile.
+- **Verification:** Frontend production build passed. All 16 HTTPS-mode integration/configuration tests passed. The exported handler returned successful health/readiness responses and used verified TLS with the CA supplied through an environment variable. Root, server and updated client dependency installations reported no known audit vulnerabilities at the time of their checks.
+- **Limitations:** These are local preparation checks, not proof of a deployed site. Vercel build/routing and browser authentication must be checked after import. Authentication throttling remains per function instance; deployment does not complete the entire security checklist.
+- **My actions:** I committed and pushed the earlier security work and am handling the Vercel account/repository import. I still need to apply, review and push this deployment patch and enter the production settings.
+- **Delivery:** Prepared as a patch because local repository write access was not granted. No hosted project or deployment was created by Codex.
+- **Commit:** Pending; add the deployment preparation commit link after review.
+
 ## October 8, 2026 - Database permissions and security records
 - **Tool:** OpenAI Codex.
 - **Request:** Separate runtime and administrator database access, guide the Supabase permission changes, and save the verified setup and security records.

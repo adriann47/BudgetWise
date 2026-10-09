@@ -16,7 +16,9 @@ test('PostgreSQL authentication, sessions, ownership and request protection', as
   await adminPool.query(`CREATE SCHEMA "${schema}"`)
   let pool = new pg.Pool({ ...adminPool.options, options: undefined })
   pool.on('connect', client => { client.query(`SET search_path TO "${schema}"`).catch(() => {}) })
-  const config = { SESSION_SECRET: randomBytes(48).toString('hex'), CORS_ORIGINS: 'http://localhost:5173', NODE_ENV: 'test' }
+  const httpsMode = process.env.BUDGETWISE_TEST_HTTPS === 'true'
+  const origin = httpsMode ? 'https://budgetwise.example.test' : 'http://localhost:5173'
+  const config = { SESSION_SECRET: randomBytes(48).toString('hex'), CORS_ORIGINS: origin, NODE_ENV: httpsMode ? 'production' : 'test', ...(httpsMode ? { TRUST_PROXY_HOPS: '1' } : {}) }
   const runtimeRole = `bw_role_${randomBytes(8).toString('hex')}`
   let roleCreated = false
   let app, server, base
@@ -31,7 +33,7 @@ test('PostgreSQL authentication, sessions, ownership and request protection', as
     return {
       get cookie() { return cookie },
       async call(path, method = 'GET', body, headers = {}) {
-        const response = await fetch(base + path, { method, headers: { Cookie: cookie, Origin: 'http://localhost:5173', 'Content-Type': 'application/json', 'X-CSRF-Token': csrf, ...headers }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) })
+        const response = await fetch(base + path, { method, headers: { Cookie: cookie, Origin: origin, ...(httpsMode ? { 'X-Forwarded-Proto': 'https' } : {}), 'Content-Type': 'application/json', 'X-CSRF-Token': csrf, ...headers }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) })
         const setCookie = response.headers.get('set-cookie')
         if (setCookie) cookie = setCookie.split(';')[0]
         const data = response.status === 204 ? null : await response.json()
@@ -109,6 +111,7 @@ test('PostgreSQL authentication, sessions, ownership and request protection', as
       assert.equal(result.data.user.email, 'alice@example.test')
       assert.equal(result.data.user.password_hash, undefined)
       assert.match(result.setCookie, /HttpOnly/i)
+      if (httpsMode) assert.match(result.setCookie, /; Secure/i)
       assert.match(result.setCookie, /SameSite=Lax/i)
       assert.notEqual(alice.cookie, guestCookie)
       authenticatedCookie = alice.cookie

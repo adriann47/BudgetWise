@@ -147,3 +147,6 @@ OpenAI Codex assisted with code, tests, setup and documentation. See [AI-USAGE.m
 
 ## License
 MIT; see [LICENSE](LICENSE).
+## Vercel deployment
+
+Use the repository root and the Other preset to deploy the real frontend and Express API together. Follow [the Vercel deployment guide](docs/vercel-deployment.md) for environment variables, build settings, verification and known limitations. The local two-terminal workflow is unchanged.
