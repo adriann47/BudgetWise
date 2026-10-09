@@ -145,6 +145,15 @@ These are the earlier Week 1 interface screenshots. Authentication screenshots r
 ## AI assistance
 OpenAI Codex assisted with code, tests, setup and documentation. See [AI-USAGE.md](AI-USAGE.md). Review and understand generated work before submitting it.
 
+## Asset credits
+
+- **Fonts:** DM Sans by the DM Sans Project Authors and Manrope by the Manrope Project Authors are loaded through Google Fonts in `client/src/styles.css`. Both are licensed under the SIL Open Font License 1.1. See the [DM Sans license](https://github.com/google/fonts/blob/main/ofl/dmsans/OFL.txt) and [Manrope license](https://github.com/google/fonts/blob/main/ofl/manrope/OFL.txt).
+- **Screenshots:** `docs/assets/week1-desktop.png` and `docs/assets/Week1_Mobile.png` show the BudgetWise Week 1 demo interface with fictional sample expenses. The fonts and interface assets visible in them retain their respective credits.
+- **Icons:** The inline SVG paths in `client/src/components/Icon.jsx` were added during AI-assisted interface development. Their original source has not been independently verified; this credit does not establish exclusive authorship or a third-party license. Icon provenance remains an open item in the asset review.
+- **Brand mark:** The current BudgetWise mark is the letter B rendered as text and styled in the app.
+
+Third-party assets retain their own licenses; the project MIT license does not replace those terms.
+
 ## License
 MIT; see [LICENSE](LICENSE).
 ## Vercel deployment

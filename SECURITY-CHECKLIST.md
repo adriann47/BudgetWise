@@ -1,10 +1,12 @@
 # BudgetWise Security Checklist
 
-Review date: October 7, 2026; database follow-up: October 8, 2026. Scope: the CURRENT local working files and configured Supabase database, not the historical pre-Supabase Week 2 checkpoint.
+Review date: October 7, 2026; database follow-up: October 8, 2026; targeted No-item recheck: October 9, 2026. Scope: the CURRENT local working files and configured Supabase database, not the historical pre-Supabase Week 2 checkpoint.
 
-This is an evidence-based draft prepared with AI assistance. Review and express the evidence in your own words before submitting it. No means either a confirmed gap or an unverified required check; the evidence explains which. Yes reflects the checks performed, not a guarantee that no vulnerability exists. The original review made no changes. The October 8 follow-up records the runtime-role and database-permission fixes applied by the student; unrelated checks retain their original evidence.
+This is an evidence-based draft prepared with AI assistance. Review and express the evidence in your own words before submitting it. No means either a confirmed gap or an unverified required check; the evidence explains which. Yes reflects the checks performed, not a guarantee that no vulnerability exists. The original review made no changes. The October 8 follow-up records the runtime-role and database-permission fixes applied by the student; The October 9 review revisits the nine previously No rows; other rows retain their earlier evidence.
 
-The October 7 history review inspected local HEAD e81a922. That historical scan was not repeated for subsequent commits. Remote settings and remote-only history remain unverified.
+The original October 7 history review inspected local HEAD e81a922. October 9 checks covered current local files, local Git email metadata, the supplied GitHub run logs/artifact at 83a0ba1, account-setting screenshots and the BudgetWise Figma page. They do not constitute a new full security audit or a review of remote-only history.
+
+At the student's request, N/A rows 5, 6, 8, 20 and 22 are preserved verbatim and were not rechecked. Row 6 contains an outdated pre-deployment explanation: the app is now deployed on Vercel. Preserving that row is not confirmation that it remains inapplicable.
 
 ## Secrets and credentials
 
@@ -25,17 +27,17 @@ If your project has no workflows, mark every row N/A and say so once.
 | --- | --- | --- | --- |
 | 7 | No secret value is written literally in any workflow YAML file | Yes | Reviewed .github/workflows/deploy-pages.yml; it uses public VITE variables and contains no literal secret values. |
 | 8 | Secrets are stored in repository Actions secrets and read with `${{ secrets.NAME }}` | N/A | The Pages workflow needs no custom app secrets; VITE inputs are public variables and deployment uses GitHub-managed permissions. |
-| 9 | No workflow step echoes, dumps or debug-prints a secret, and I opened a recent run's log to confirm | No | Workflow source does not explicitly dump secrets, but a recent Actions run log was not accessible for confirmation. |
-| 10 | Uploaded build artifacts contain no `.env`, key file or generated config | No | Workflow uploads client/dist only; an actual uploaded artifact was not accessible for inspection. |
-| 11 | Third-party actions are pinned to a commit SHA, not a moveable tag | No | checkout, setup-node, upload-pages-artifact and deploy-pages use movable @v3/@v4 tags rather than full commit SHAs. |
-| 12 | Secret scanning and push protection are enabled on the repository | No | Secret scanning and push protection are unverified; unauthenticated GitHub lookup returned 404, which does not establish settings. |
+| 9 | No workflow step echoes, dumps or debug-prints a secret, and I opened a recent run's log to confirm | Yes | October 9: inspected both files in logs_102663532692.zip for the recent build at commit 83a0ba1. Tokens and authorization values are masked. Printed environment values are public build settings. No exposed credential patterns or matches for three current local secret values were found. |
+| 10 | Uploaded build artifacts contain no `.env`, key file or generated config | Yes | October 9: inspected github-pages.zip and its artifact.tar. It contains index.html, 404.html, one JavaScript bundle and one CSS file. No private environment/configuration files, keys, PostgreSQL URLs or matches for three current local secret values were found. |
+| 11 | Third-party actions are pinned to a commit SHA, not a moveable tag | Yes | October 9: all four direct action references in the local workflow are pinned to full 40-character commit SHAs verified against official actions repositories. This confirms the local change; its commit, push and a new Actions run remain pending. Dependencies inside those actions were not independently pinned by this change. |
+| 12 | Secret scanning and push protection are enabled on the repository | No | October 9: the supplied private-repository Advanced Security screenshot does not list secret scanning or push protection, so enablement remains unverified. Dependency graph, Dependabot alerts and security updates are Off; those are separate features. |
 
 ## Database
 
 | # | Check | Yes / No / N/A | Evidence |
 | --- | --- | --- | --- |
 | 13 | Every query taking user input uses parameters, never string concatenation | Yes | Express queries bind user values with $1-style parameters. Dynamic SQL fragments are fixed application choices, not concatenated user values. |
-| 14 | The database is not open to the whole internet, or is reachable only by the app | No | Database network allowlists were not verified; no evidence yet that access is restricted to the app. |
+| 14 | The database is not open to the whole internet, or is reachable only by the app | No | October 9: the Supabase Network Restrictions screenshot confirms all IP addresses can connect. Vercel uses dynamic outbound IPs on the current setup, so no allowlist was applied and the hosting move was cancelled. Database credentials, verified TLS and a restricted runtime role remain separate protections. |
 | 15 | The database user the app connects as has only the permissions it needs | Yes | October 8: the configured runtime connection is budgetwise_app, with no superuser, CREATE ROLE, CREATE DATABASE or BYPASSRLS flags. Explicit application grants preserve required operations; restricted-role tests verify schema changes, truncation and role creation are denied. Admin credentials are kept for migration/test tools. |
 | 16 | Seed and sample data is invented, not real people's data | Yes | Seed expenses and example.test integration accounts are fictional; automated tests use a disposable schema. |
 | 17 | Debug, seed and reset routes are removed before going public | Yes | The current Express route definitions expose no database reset, seed or debug endpoint; migrations and test setup are command-line tools. |
@@ -63,17 +65,17 @@ If your project has no workflows, mark every row N/A and say so once.
 
 | # | Check | Yes / No / N/A | Evidence |
 | --- | --- | --- | --- |
-| 27 | No student number, personal email, phone number or home address in the repository or in commit messages | No | No personal email candidates were found in tracked text files or commit message bodies, but local Git author/committer metadata includes a non-noreply personal email. Other personal identifiers and image contents were not exhaustively verified. |
-| 28 | No classmate's personal data in the repository | No | No obvious classmate data found in text fixtures; image/document provenance and consent are not fully verified. |
+| 27 | No student number, personal email, phone number or home address in the repository or in commit messages | No | October 9: older Git author/committer metadata still contains a personal email. The repository-local user.email is now verified as a GitHub noreply address for future commits; GitHub email privacy is enabled. Published history was not rewritten. |
+| 28 | No classmate's personal data in the repository | Yes | October 9: no apparent classmate personal data was found in the inspected tracked text and both tracked screenshots. The screenshots show BudgetWise demo screens with fictional sample expenses. This records the inspected repository scope, not private database contents. |
 | 29 | Dependencies come from official registries, and `node_modules` is gitignored | Yes | Both lockfiles resolve dependencies through registry.npmjs.org, and node_modules/ is gitignored. A separate dependency vulnerability finding is recorded below. |
-| 30 | Images, fonts and other assets are mine, licensed, or credited | No | Google Fonts, SVG icons and screenshots exist, but complete asset credits are unverified; LICENSE has a placeholder owner. |
-| 31 | Repository visibility is deliberate, and I checked it after my last push | No | Repository visibility and the latest remote push were not confirmed; an unauthenticated API 404 can indicate private or unavailable access. |
+| 30 | Images, fonts and other assets are mine, licensed, or credited | No | October 9: README asset credits are present and LICENSE names the project author. DM Sans and Manrope licenses were verified as SIL OFL 1.1. App screenshots show demo data. Figma Page 3 uses text-symbol navigation icons, which do not establish the source of the app SVG paths. SVG provenance remains unverified; replacement was deferred. |
+| 31 | Repository visibility is deliberate, and I checked it after my last push | Yes | October 9: after the latest reported push, the supplied GitHub screenshot shows the repository lock and the run at 83a0ba1; its downloaded log records IS_PRIVATE=true. Keeping the repository private is the chosen setting. Pending local changes have not yet been pushed. |
 
 ## Anything I found and fixed
 
-The student applied the restricted runtime-role setup and manually ran the RLS/grant SQL in Supabase. The verification screenshot matched all six expected rows; the student then reported successful login/logout, expenses, budgets, category and registration testing. The follow-up code makes those permissions repeatable through migrations and runtime setup. Its patch still needs applying to the local repository.
+The student applied the restricted runtime-role setup and manually ran the RLS/grant SQL in Supabase. The verification screenshot matched all six expected rows; the student then reported successful login/logout, expenses, budgets, category and registration testing. The follow-up code makes those permissions repeatable through migrations and runtime setup.
 
-Remaining gaps include network restrictions, GitHub checks, workflow pinning, privacy/asset reviews and deployment configuration. The checklist is not an assurance that all security issues are resolved.
+October 9: inspected the downloaded Actions logs and artifact, confirmed local workflow pins, verified the noreply Git email configuration, and checked README asset credits. Remaining No rows are 12 (GitHub protection enablement), 14 (network allowlist), 27 (historical email exposure) and 30 (SVG provenance). The checklist is not an assurance that all security issues are resolved.
 
 ## Additional dependency and connection checks
 
@@ -82,13 +84,12 @@ Remaining gaps include network restrictions, GitHub checks, workflow pinning, pr
 - Client-to-Supabase-pooler TLS: encrypted=true and authorized=true. The separate database-side pg_stat_ssl result concerns the pooler-to-database leg and was not used to infer client encryption.
 - Earlier checks in this session: 11 reported backend tests and two mock-storage tests passed. The user reports successful browser/mobile verification.
 
-## Priority before deployment
+## Remaining follow-up after deployment
 
-1. Apply the repeatable security setup patch and run migrations/tests locally.
-2. Confirm the Data API is disabled in the dashboard; keep database URLs out of the client.
-3. Review network restrictions, pin workflow actions, and inspect GitHub protection settings and a recent build artifact/log.
-4. Review author-email exposure and asset credits; do not rewrite published history without coordinating it.
-5. Configure production secrets, HTTPS, exact origins and cookies, then repeat deployed login/logout and account-isolation checks.
+1. Commit and push the local workflow/documentation changes, then inspect the new Actions run. Historical logs reviewed here predate the action pins.
+2. Keep rows 12, 14, 27 and 30 as No until their specific gaps are resolved; no hosting migration, history rewrite or icon replacement was performed.
+3. Revisit preserved N/A row 6 in a separate deployment review. Other earlier Yes rows were not comprehensively retested in this targeted recheck.
+4. Existing deployment verification is based on the student's successful login and data-persistence reports; the current recheck did not repeat live account-isolation testing.
 
 ## October 8 follow-up validation
 
